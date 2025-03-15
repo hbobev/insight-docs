@@ -1,0 +1,198 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: insightdocs-mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - insightdocs-network
+
+  postgres:
+    image: postgres:latest
+    container_name: insightdocs-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - insightdocs-network
+
+  redis:
+    image: redis:latest
+    container_name: insightdocs-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - insightdocs-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: insightdocs-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    networks:
+      - insightdocs-network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api_gateway/Dockerfile
+    container_name: insightdocs-api-gateway
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/
+      - POSTGRES_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URI=redis://redis:6379/0
+      - RABBITMQ_URI=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+      - DOCUMENT_INGESTION_SERVICE_URL=http://document-ingestion:8001
+      - DOCUMENT_PROCESSING_SERVICE_URL=http://document-processing:8002
+      - ENTITY_EXTRACTION_SERVICE_URL=http://entity-extraction:8003
+      - TASK_ORCHESTRATION_SERVICE_URL=http://task-orchestration:8004
+    depends_on:
+      - mongodb
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - insightdocs-network
+
+  document-ingestion:
+    build:
+      context: .
+      dockerfile: document_ingestion/Dockerfile
+    container_name: insightdocs-document-ingestion
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      - MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/
+      - POSTGRES_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URI=redis://redis:6379/0
+      - RABBITMQ_URI=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+      - TASK_ORCHESTRATION_SERVICE_URL=http://task-orchestration:8004
+    volumes:
+      - ./data/raw:/app/data/raw
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - insightdocs-network
+
+  document-processing:
+    build:
+      context: .
+      dockerfile: document_processing/Dockerfile
+    container_name: insightdocs-document-processing
+    restart: always
+    ports:
+      - "8002:8002"
+    environment:
+      - MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/
+      - POSTGRES_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URI=redis://redis:6379/0
+      - RABBITMQ_URI=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+      - TASK_ORCHESTRATION_SERVICE_URL=http://task-orchestration:8004
+    volumes:
+      - ./data/raw:/app/data/raw
+      - ./data/processed:/app/data/processed
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - insightdocs-network
+
+  entity-extraction:
+    build:
+      context: .
+      dockerfile: entity_extraction/Dockerfile
+    container_name: insightdocs-entity-extraction
+    restart: always
+    ports:
+      - "8003:8003"
+    environment:
+      - MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/
+      - POSTGRES_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URI=redis://redis:6379/0
+      - RABBITMQ_URI=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+      - TASK_ORCHESTRATION_SERVICE_URL=http://task-orchestration:8004
+    volumes:
+      - ./data/processed:/app/data/processed
+      - ./data/models:/app/data/models
+    depends_on:
+      - mongodb
+      - postgres
+      - rabbitmq
+    networks:
+      - insightdocs-network
+
+  task-orchestration:
+    build:
+      context: .
+      dockerfile: task_orchestration/Dockerfile
+    container_name: insightdocs-task-orchestration
+    restart: always
+    ports:
+      - "8004:8004"
+    environment:
+      - MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/
+      - POSTGRES_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URI=redis://redis:6379/0
+      - RABBITMQ_URI=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+      - SERVICE_TYPE=api
+    depends_on:
+      - mongodb
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - insightdocs-network
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: task_orchestration/Dockerfile
+    container_name: insightdocs-celery-worker
+    restart: always
+    environment:
+      - MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/
+      - POSTGRES_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URI=redis://redis:6379/0
+      - RABBITMQ_URI=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+      - SERVICE_TYPE=worker
+    depends_on:
+      - mongodb
+      - postgres
+      - redis
+      - rabbitmq
+      - task-orchestration
+    networks:
+      - insightdocs-network
+
+volumes:
+  mongodb_data:
+  postgres_data:
+
+networks:
+  insightdocs-network:
+    driver: bridge
