@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "entity_extraction"
+version = "0.1.0"
+description = "Entity extraction service for the InsightDocs document processing pipeline"
+authors = ["hbobev"]
+packages = [{include = "**/*.py"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+transformers = "^4.33.1"
+spacy = "^3.6.1"
+pandas = "^2.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

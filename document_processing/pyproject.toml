@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "document_processing"
+version = "0.1.0"
+description = "Document processing service for the InsightDocs document processing pipeline"
+authors = ["hbobev"]
+packages = [{include = "**/*.py"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+numpy = "^1.25.2"
+opencv-python-headless = "^4.8.0"
+pytesseract = "^0.3.10"
+pillow = "^10.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

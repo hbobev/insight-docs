@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "document_ingestion"
+version = "0.1.0"
+description = "Document ingestion service for the InsightDocs document processing pipeline"
+authors = ["hbobev"]
+packages = [{include = "**/*.py"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pymongo = "^4.5.0"
+motor = "^3.3.1"
+pillow = "^10.0.0"
+python-multipart = "^0.0.7"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
