@@ -21,15 +21,15 @@ COPY entity_extraction/pyproject.toml ./entity_extraction/
 COPY shared/pyproject.toml ./shared/
 
 # Install dependencies
-# Root dependencies first
-RUN cd /app && poetry install --no-root --no-dev
+# Root dependencies first, excluding other microservices
+RUN cd /app && poetry install --no-root --no-dev --without api_gateway,document_ingestion,document_processing,task_orchestration
 
 # Copy code
 COPY shared ./shared
 COPY entity_extraction ./entity_extraction
 
-# Install shared module as a package 
-RUN cd ./shared && poetry install --no-dev
+# Install shared module as a package in editable mode
+RUN pip install -e ./shared
 
 # Set working directory to entity_extraction
 WORKDIR /app/entity_extraction

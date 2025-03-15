@@ -19,15 +19,15 @@ COPY document_ingestion/pyproject.toml ./document_ingestion/
 COPY shared/pyproject.toml ./shared/
 
 # Install dependencies
-# Root dependencies first
-RUN cd /app && poetry install --no-root --no-dev
+# Root dependencies first, excluding other microservices
+RUN cd /app && poetry install --no-root --no-dev --without api_gateway,document_processing,entity_extraction,task_orchestration
 
 # Copy code
 COPY shared ./shared
 COPY document_ingestion ./document_ingestion
 
-# Install shared module as a package 
-RUN cd ./shared && poetry install --no-dev
+# Install shared module as a package in editable mode
+RUN pip install -e ./shared
 
 # Set working directory to document_ingestion
 WORKDIR /app/document_ingestion
