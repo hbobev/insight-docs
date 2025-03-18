@@ -1,0 +1,65 @@
+[tool.poetry]
+name = "insight-docs"
+version = "0.1.0"
+description = "A microservices-based document processing pipeline that leverages computer vision and NLP to extract structured information from unstructured documents, with automated classification, entity extraction, and continuous learning capabilities."
+authors = ["hbobev"]
+readme = "README.md"
+package-mode = false
+# packages = [{include = "shared"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.111.0"
+uvicorn = "^0.23.2"
+pydantic-settings = "^2.0.3"
+python-dotenv = "^1.0.0"
+httpx = "^0.24.1"
+sqlalchemy = "^2.0.20"
+psycopg2-binary = "^2.9.7"
+
+[tool.poetry.group.api_gateway.dependencies]
+# API Gateway specific dependencies are minimal as it mostly uses shared deps
+
+[tool.poetry.group.document_ingestion.dependencies]
+pymongo = "^4.5.0"
+motor = "^3.3.1"
+pillow = "^10.0.0"
+python-multipart = "^0.0.7"
+
+[tool.poetry.group.document_processing.dependencies]
+numpy = "^1.25.2"
+opencv-python-headless = "^4.8.0"
+pytesseract = "^0.3.10"
+pillow = "^10.0.0"
+
+[tool.poetry.group.entity_extraction.dependencies]
+transformers = "^4.33.1"
+spacy = "^3.6.1"
+pandas = "^2.1.0"
+
+[tool.poetry.group.task_orchestration.dependencies]
+celery = "^5.3.4"
+redis = "^5.0.0"
+pymongo = "^4.5.0"
+motor = "^3.3.1"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.7.0"
+isort = "^5.12.0"
+flake8 = "^6.1.0"
+mypy = "^1.5.1"
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+pytest-asyncio = "^0.21.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3

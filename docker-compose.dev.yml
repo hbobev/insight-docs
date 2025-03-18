@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # Use the same services as in docker-compose.yml but with reload
+  api_gateway:
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - ./configs/dev.env
+
+  document_ingestion:
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - ./configs/dev.env
+
+  document_processing:
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - ./configs/dev.env
+
+  entity_extraction:
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - ./configs/dev.env
+
+  task_orchestration:
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - ./configs/dev.env

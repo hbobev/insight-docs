@@ -1,0 +1,236 @@
+services:
+  # External dependencies
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "${MONGO_PORT}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+    networks:
+      - insight_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  postgres:
+    image: postgres:17
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+    networks:
+      - insight_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME} -d ${POSTGRES_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - insight_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    ports:
+      - "${RABBITMQ_PORT}:5672"  # AMQP protocol
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    networks:
+      - insight_network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # InsightDocs microservices
+  task_orchestration:
+    build:
+      context: .
+      dockerfile: ./task_orchestration/Dockerfile
+    image: insightdocs/task_orchestration
+    ports:
+      - "8004:8004"
+    volumes:
+      - upload_data:/app/data/uploads
+      - processed_data:/app/data/processed
+      - models_data:/app/data/models
+    environment:
+      - CELERY_BROKER_URL=amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/${RABBITMQ_VHOST}
+      - CELERY_RESULT_BACKEND=redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}
+      - MONGO_URI=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/
+      - DOCUMENT_PROCESSING_URL=${DOCUMENT_PROCESSING_URL}
+      - ENTITY_EXTRACTION_URL=${ENTITY_EXTRACTION_URL}
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - insight_network
+
+  document_ingestion:
+    build:
+      context: .
+      dockerfile: ./document_ingestion/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - MONGO_URI=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/
+      - TASK_ORCHESTRATION_URL=${TASK_ORCHESTRATION_URL}
+    volumes:
+      - upload_data:/app/data/uploads
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      task_orchestration:
+        condition: service_started
+    networks:
+      - insight_network
+
+  document_processing:
+    build:
+      context: .
+      dockerfile: ./document_processing/Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      - MONGO_URI=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/
+      - TASK_ORCHESTRATION_URL=${TASK_ORCHESTRATION_URL}
+    volumes:
+      - processed_data:/app/data/processed
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      task_orchestration:
+        condition: service_started
+    networks:
+      - insight_network
+
+  entity_extraction:
+    build:
+      context: .
+      dockerfile: ./entity_extraction/Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - MONGO_URI=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/
+      - DB_HOST=${POSTGRES_HOST}
+      - DB_PORT=5432  # Internal port remains the same
+      - DB_USER=${POSTGRES_USERNAME}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_NAME=${POSTGRES_DATABASE}
+      - TASK_ORCHESTRATION_URL=${TASK_ORCHESTRATION_URL}
+    volumes:
+      - models_data:/app/data/models
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      task_orchestration:
+        condition: service_started
+    networks:
+      - insight_network
+
+  api_gateway:
+    build:
+      context: .
+      dockerfile: ./api_gateway/Dockerfile
+    ports:
+      - "${API_GATEWAY_PORT}:8000"
+    environment:
+      - DB_HOST=${POSTGRES_HOST}
+      - DB_PORT=5432  # Internal port remains the same
+      - DB_USER=${POSTGRES_USERNAME}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_NAME=${POSTGRES_DATABASE}
+      - MONGO_URI=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/
+      - DOCUMENT_INGESTION_URL=${DOCUMENT_INGESTION_URL}
+      - DOCUMENT_PROCESSING_URL=${DOCUMENT_PROCESSING_URL}
+      - ENTITY_EXTRACTION_URL=${ENTITY_EXTRACTION_URL}
+      - TASK_ORCHESTRATION_URL=${TASK_ORCHESTRATION_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      document_ingestion:
+        condition: service_started
+      document_processing:
+        condition: service_started
+      entity_extraction:
+        condition: service_started
+      task_orchestration:
+        condition: service_started
+    networks:
+      - insight_network
+
+  celery_worker:
+    # Using the same image as task_orchestration but with a different command
+    image: insightdocs/task_orchestration
+    command: celery -A task_orchestration.celery_app worker --loglevel=info
+    volumes:
+      - upload_data:/app/data/uploads
+      - processed_data:/app/data/processed
+      - models_data:/app/data/models
+    environment:
+      - CELERY_BROKER_URL=amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/${RABBITMQ_VHOST}
+      - CELERY_RESULT_BACKEND=redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}
+      - MONGO_URI=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/
+      - DOCUMENT_PROCESSING_URL=${DOCUMENT_PROCESSING_URL}
+      - ENTITY_EXTRACTION_URL=${ENTITY_EXTRACTION_URL}
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      task_orchestration:
+        condition: service_started
+    networks:
+      - insight_network
+
+networks:
+  insight_network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  upload_data:
+  processed_data:
+  models_data:
+  
