@@ -1,0 +1,66 @@
+# Version control
+.git
+.gitignore
+.github/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Environment and configuration
+.env
+.venv
+env/
+venv/
+ENV/
+.python-version
+.env.*
+!.env.example
+
+# Development tools
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Data files (unless explicitly needed in the image)
+data/raw/
+data/processed/
+*.csv
+*.json
+*.xlsx
+
+# Docker files (meta)
+docker-compose*.yml
+Dockerfile*
+!Dockerfile
+
+# Dependencies
+poetry.lock
+poetry.toml
+
+# Build and distribution
+dist/
+build/
+*.egg-info/
+
+# Testing
+tests/
+.pytest_cache/
+coverage/
+
+# Log files
+logs/
+*.log
