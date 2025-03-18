@@ -2,35 +2,24 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    gcc \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
 # Install Poetry
-RUN pip install --no-cache-dir poetry && \
-    poetry config virtualenvs.create false
+RUN pip install poetry==2.1.1
 
-# Copy dependency files first for better caching
-COPY pyproject.toml ./
-COPY api_gateway/pyproject.toml ./api_gateway/
-COPY shared/pyproject.toml ./shared/
+# Copy Poetry configuration files
+COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies
-# Root dependencies first, excluding other microservices
-RUN cd /app && poetry install --no-root --no-dev --without document_ingestion,document_processing,entity_extraction,task_orchestration
+# Configure Poetry to not create a virtual environment
+RUN poetry config virtualenvs.create false
 
-# Copy code
-COPY shared ./shared
-COPY api_gateway ./api_gateway
+# Install dependencies required for api_gateway
+RUN poetry install --with api_gateway --no-root
 
-# Install shared module as a package in editable mode
-RUN pip install -e ./shared
+# Copy shared code and service-specific code
+COPY shared/ ./shared/
+COPY api_gateway/ ./api_gateway/
 
-# Set working directory to api_gateway
-WORKDIR /app/api_gateway
+# Test dependencies
+RUN echo "import fastapi; import uvicorn; print('All api_gateway dependencies successfully installed!')" > test_deps.py
 
-# Command will be specified in docker-compose.yml
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command to run the FastAPI service
+CMD ["uvicorn", "api_gateway.app:app", "--host", "0.0.0.0", "--port", "8000"]

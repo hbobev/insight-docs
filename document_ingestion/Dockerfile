@@ -2,35 +2,30 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    gcc \
-    && apt-get clean \
+# Install system dependencies for Pillow
+RUN apt-get update && apt-get install -y \
+    libjpeg-dev \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
-RUN pip install --no-cache-dir poetry && \
-    poetry config virtualenvs.create false
+RUN pip install poetry==2.1.1
 
-# Copy dependency files first for better caching
-COPY pyproject.toml ./
-COPY document_ingestion/pyproject.toml ./document_ingestion/
-COPY shared/pyproject.toml ./shared/
+# Copy Poetry configuration files
+COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies
-# Root dependencies first, excluding other microservices
-RUN cd /app && poetry install --no-root --no-dev --without api_gateway,document_processing,entity_extraction,task_orchestration
+# Configure Poetry to not create a virtual environment
+RUN poetry config virtualenvs.create false
 
-# Copy code
-COPY shared ./shared
-COPY document_ingestion ./document_ingestion
+# Install only the dependencies required for document_ingestion
+RUN poetry install --with document_ingestion --no-root
 
-# Install shared module as a package in editable mode
-RUN pip install -e ./shared
+# Copy shared code and service-specific code
+COPY shared/ ./shared/
+COPY document_ingestion/ ./document_ingestion/
 
-# Set working directory to document_ingestion
-WORKDIR /app/document_ingestion
+# Test dependencies
+RUN echo "import pymongo; import motor; import PIL; print('All document_ingestion dependencies successfully installed!')" > test_deps.py
 
-# Command will be specified in docker-compose.yml
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8001"]
+# Default command to run the FastAPI service
+CMD ["uvicorn", "document_ingestion.app:app", "--host", "0.0.0.0", "--port", "8001"]

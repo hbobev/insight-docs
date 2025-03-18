@@ -2,40 +2,32 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install dependencies needed for transformers and spaCy
+RUN apt-get update && apt-get install -y \
     build-essential \
-    gcc \
-    # For spaCy and transformers
-    git \
-    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
-RUN pip install --no-cache-dir poetry && \
-    poetry config virtualenvs.create false
+RUN pip install poetry==2.1.1
 
-# Copy dependency files first for better caching
-COPY pyproject.toml ./
-COPY entity_extraction/pyproject.toml ./entity_extraction/
-COPY shared/pyproject.toml ./shared/
+# Copy Poetry configuration files
+COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies
-# Root dependencies first, excluding other microservices
-RUN cd /app && poetry install --no-root --no-dev --without api_gateway,document_ingestion,document_processing,task_orchestration
+# Configure Poetry to not create a virtual environment
+RUN poetry config virtualenvs.create false
 
-# Copy code
-COPY shared ./shared
-COPY entity_extraction ./entity_extraction
+# Install only the dependencies required for entity_extraction
+RUN poetry install --with entity_extraction --no-root
 
-# Install shared module as a package in editable mode
-RUN pip install -e ./shared
+# Copy shared code and service-specific code
+COPY shared/ ./shared/
+COPY entity_extraction/ ./entity_extraction/
 
-# Set working directory to entity_extraction
-WORKDIR /app/entity_extraction
-
-# Download spaCy model
+# Download a small spaCy model for testing
 RUN python -m spacy download en_core_web_sm
 
-# Command will be specified in docker-compose.yml
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8003"]
+# Test dependencies
+RUN echo "import transformers; import spacy; import pandas; print('All entity_extraction dependencies successfully installed!')" > test_deps.py
+
+# Default command to run the FastAPI service
+CMD ["uvicorn", "entity_extraction.app:app", "--host", "0.0.0.0", "--port", "8003"]

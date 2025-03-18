@@ -2,39 +2,31 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install system dependencies that might be needed for processing tasks
+RUN apt-get update && apt-get install -y \
     build-essential \
-    gcc \
-    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
-RUN pip install --no-cache-dir poetry && \
-    poetry config virtualenvs.create false
+RUN pip install poetry==2.1.1
 
-# Copy dependency files first for better caching
-COPY pyproject.toml ./
-COPY task_orchestration/pyproject.toml ./task_orchestration/
-COPY shared/pyproject.toml ./shared/
+# Copy Poetry configuration files
+COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies
-# Root dependencies first, excluding other microservices
-RUN cd /app && poetry install --no-root --no-dev --without api_gateway,document_ingestion,document_processing,entity_extraction
+# Configure Poetry to not create a virtual environment
+RUN poetry config virtualenvs.create false
 
-# Copy code
-COPY shared ./shared
-COPY task_orchestration ./task_orchestration
+# Install only the dependencies required for task_orchestration
+# True microservices should be independent in production
+RUN poetry install --with task_orchestration --no-root
 
-# Install shared module as a package in editable mode
-RUN pip install -e ./shared
+# Copy shared code and service-specific code
+COPY shared/ ./shared/
+COPY task_orchestration/ ./task_orchestration/
 
-# Set working directory to task_orchestration
-WORKDIR /app/task_orchestration
+# Test dependencies
+RUN echo "import celery; import redis; print('All task_orchestration dependencies successfully installed!')" > test_deps.py
 
-# Command will be specified in docker-compose.yml
-# Using a script that can start either the API or Celery worker
-COPY task_orchestration/scripts/start.sh ./
-RUN chmod +x ./start.sh
-
-CMD ["./start.sh"]
+# Default command to run the FastAPI service
+# This will be overridden for the worker in docker-compose.yml
+CMD ["uvicorn", "task_orchestration.app:app", "--host", "0.0.0.0", "--port", "8004"]

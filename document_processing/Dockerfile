@@ -2,40 +2,32 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    gcc \
-    # Additional dependencies for OpenCV and Tesseract
-    libgl1-mesa-glx \
-    libglib2.0-0 \
+# Install system dependencies for OpenCV and Tesseract
+RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     libtesseract-dev \
-    && apt-get clean \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
-RUN pip install --no-cache-dir poetry && \
-    poetry config virtualenvs.create false
+RUN pip install poetry==2.1.1
 
-# Copy dependency files first for better caching
-COPY pyproject.toml ./
-COPY document_processing/pyproject.toml ./document_processing/
-COPY shared/pyproject.toml ./shared/
+# Copy Poetry configuration files
+COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies
-# Root dependencies first, excluding other microservices
-RUN cd /app && poetry install --no-root --no-dev --without api_gateway,document_ingestion,entity_extraction,task_orchestration
+# Configure Poetry to not create a virtual environment
+RUN poetry config virtualenvs.create false
 
-# Copy code
-COPY shared ./shared
-COPY document_processing ./document_processing
+# Install only the dependencies required for document_processing
+RUN poetry install --with document_processing --no-root
 
-# Install shared module as a package in editable mode
-RUN pip install -e ./shared
+# Copy shared code and service-specific code
+COPY shared/ ./shared/
+COPY document_processing/ ./document_processing/
 
-# Set working directory to document_processing
-WORKDIR /app/document_processing
+# Create a simple entrypoint file to test the installation
+RUN echo "import numpy; import cv2; import pytesseract; import PIL; print('All document_processing dependencies successfully installed!')" > test_deps.py
 
-# Command will be specified in docker-compose.yml
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8002"]
+# Default command to run the FastAPI service
+CMD ["uvicorn", "document_processing.app:app", "--host", "0.0.0.0", "--port", "8002"]
