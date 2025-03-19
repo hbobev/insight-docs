@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 
 app = FastAPI(
-    title=f"InsightDocs - entity extraction Service",
-    description=f"API for the entity extraction service of InsightDocs document processing pipeline",
+    title="InsightDocs - entity extraction Service",
+    description="API for the entity extraction service of InsightDocs document processing pipeline",
     version="0.1.0",
 )
 

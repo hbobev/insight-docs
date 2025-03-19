@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 
 app = FastAPI(
-    title=f"InsightDocs - document processing Service",
-    description=f"API for the document processing service of InsightDocs document processing pipeline",
+    title="InsightDocs - document processing Service",
+    description="API for the document processing service of InsightDocs document processing pipeline",
     version="0.1.0",
 )
 
