@@ -19,6 +19,10 @@ else
     echo -e "${GREEN}Poetry is installed.${NC}"
 fi
 
+# Configure Poetry to create virtual environment in project directory
+echo -e "${BLUE}Configuring Poetry to use in-project virtual environment...${NC}"
+poetry config virtualenvs.in-project true
+
 # Install dependencies using Poetry
 echo -e "${BLUE}Installing project dependencies...${NC}"
 poetry install
