@@ -63,3 +63,7 @@ target-version = ["py312"]
 [tool.isort]
 profile = "black"
 multi_line_output = 3
+
+[tool.mypy]
+plugins = "pydantic.mypy"
+exclude = ".venv"
