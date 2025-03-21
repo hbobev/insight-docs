@@ -50,6 +50,9 @@ lint:
 	@flake8 .
 	@mypy .
 
+# Run format and lint
+check: format lint
+
 # Run the development server
 run:
 	@echo "Starting development server..."
