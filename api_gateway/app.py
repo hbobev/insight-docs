@@ -1,17 +1,11 @@
 import logging
-import sys
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api_gateway.api.v1.router import api_router
-from api_gateway.core.config import settings
-
-# Add project root to Python path
-project_root = Path(__file__).parent.parent.absolute()
-sys.path.append(str(project_root))
+from api.v1.router import api_router
+from core.config import settings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,9 +40,9 @@ def create_application() -> FastAPI:
         FastAPI: Configured FastAPI application instance
     """
     application = FastAPI(
-        title=settings.PROJECT_NAME,
+        title=settings.API_GATEWAY_PROJECT_NAME,
         description="API Gateway for Document Processing Pipeline",
-        version=settings.VERSION,
+        version=settings.API_GATEWAY_VERSION,
         # docs_url=f"{settings.API_GATEWAY_HOST}:{settings.API_GATEWAY_PORT}/docs",
         # openapi_url=f"{settings.API_GATEWAY_HOST}:{settings.API_GATEWAY_PORT}/openapi.json",
         lifespan=lifespan,
@@ -62,7 +56,7 @@ def create_application() -> FastAPI:
         allow_headers=["*"],
     )
 
-    application.include_router(api_router, prefix=f"{settings.API_PREFIX}")
+    application.include_router(api_router, prefix=f"{settings.API_GATEWAY_API_PREFIX}")
 
     return application
 
