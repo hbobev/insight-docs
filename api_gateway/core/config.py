@@ -1,34 +1,54 @@
+"""
+API Gateway service configuration.
+
+This module provides the settings class for the API Gateway service.
+"""
 from pathlib import Path
 
-from pydantic import AnyHttpUrl, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import SettingsConfigDict
 
-ROOT_DIR = Path(__file__).parents[3]
+from shared.config.settings import BaseAppSettings
 
 
-class Settings(BaseSettings):
-    """Service-specific settings."""
+class ApiGatewaySettings(BaseAppSettings):
+    """API Gateway service settings."""
 
-    PROJECT_NAME: str = ""
-    VERSION: str = "0.1.0"
+    # Application settings
+    APP_ENV: str
+    DEBUG: bool
+    LOG_LEVEL: str
+
+    # Service configuration
+    API_GATEWAY_PROJECT_NAME: str
+    API_GATEWAY_VERSION: str
     API_GATEWAY_HOST: str
     API_GATEWAY_PORT: int
-    API_GATEWAY_CORS_ORIGINS: list[AnyHttpUrl]
-    DEBUG: bool
+    API_GATEWAY_API_PREFIX: str
+    API_GATEWAY_DEFAULT_TIMEOUT: int
+    API_GATEWAY_WORKERS: int
+    API_GATEWAY_CORS_ORIGINS: list[str]
 
-    @field_validator("API_GATEWAY_CORS_ORIGINS")
-    def validate_cors_origins(cls, v: list[str]) -> list[AnyHttpUrl] | list[str]:
-        """Validate that CORS origins are valid URLs or use default origins when given as a string."""
-        if isinstance(v, str) and not v.startswith("["):
-            return [AnyHttpUrl(url=origin.strip()) for origin in v.split(",") if origin]
-        if isinstance(v, list):
-            return v
-        raise ValueError(v)
+    # Microservices URLs
+    DOCUMENT_INGESTION_SERVICE_URL: str
+    DOCUMENT_PROCESSING_SERVICE_URL: str
+    ENTITY_EXTRACTION_SERVICE_URL: str
+    TASK_ORCHESTRATION_SERVICE_URL: str
 
-    class Config:
-        case_sensitive = True
-        env_file = str(ROOT_DIR / ".env")
-        env_file_encoding = "utf-8"
+    # Authentication settings
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int
+    ENABLE_AUTH: bool
+
+    # Monitoring
+    ENABLE_METRICS: bool
+    METRICS_PORT: int
+
+    model_config = SettingsConfigDict(
+        env_file=BaseAppSettings.get_env_file(Path(__file__).parent.parent),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
-settings = Settings()
+settings = ApiGatewaySettings()
