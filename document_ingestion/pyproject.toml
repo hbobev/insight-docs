@@ -1,13 +1,21 @@
 [tool.poetry]
-name = "insight-docs-root"
+name = "document-ingestion"
 version = "0.1.0"
-description = "Root project for InsightDocs - a microservices-based document processing pipeline"
+description = "Document Ingestion service for InsightDocs - handles document validation, storage, and metadata extraction"
 authors = ["hbobev"]
-readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
+fastapi = "^0.111.0"
+uvicorn = "^0.23.2"
+pydantic-settings = "^2.0.3"
+python-dotenv = "^1.0.0"
+httpx = "^0.24.1"
+pymongo = "^4.5.0"
+motor = "^3.3.1"
+pillow = "^10.0.0"
+python-multipart = "^0.0.7"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
