@@ -1,13 +1,21 @@
 [tool.poetry]
-name = "insight-docs-root"
+name = "task-orchestration"
 version = "0.1.0"
-description = "Root project for InsightDocs - a microservices-based document processing pipeline"
+description = "Task Orchestration service for InsightDocs - manages workflow and task execution"
 authors = ["hbobev"]
-readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
+fastapi = "^0.111.0"
+uvicorn = "^0.23.2"
+pydantic-settings = "^2.0.3"
+python-dotenv = "^1.0.0"
+httpx = "^0.24.1"
+celery = "^5.3.4"
+redis = "^5.0.0"
+pymongo = "^4.5.0"
+motor = "^3.3.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"

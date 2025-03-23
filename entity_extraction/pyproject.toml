@@ -1,13 +1,20 @@
 [tool.poetry]
-name = "insight-docs-root"
+name = "entity-extraction"
 version = "0.1.0"
-description = "Root project for InsightDocs - a microservices-based document processing pipeline"
+description = "Entity Extraction service for InsightDocs - extracts structured information from documents using NLP"
 authors = ["hbobev"]
-readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
+fastapi = "^0.111.0"
+uvicorn = "^0.23.2"
+pydantic-settings = "^2.0.3"
+python-dotenv = "^1.0.0"
+httpx = "^0.24.1"
+transformers = "^4.33.1"
+spacy = "^3.6.1"
+pandas = "^2.1.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"

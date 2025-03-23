@@ -1,13 +1,20 @@
 [tool.poetry]
-name = "insight-docs-root"
+name = "api-gateway"
 version = "0.1.0"
-description = "Root project for InsightDocs - a microservices-based document processing pipeline"
+description = "API Gateway service for InsightDocs - routes requests to appropriate services and handles responses"
 authors = ["hbobev"]
-readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
+fastapi = "^0.111.0"
+uvicorn = "^0.23.2"
+pydantic-settings = "^2.0.3"
+python-dotenv = "^1.0.0"
+httpx = "^0.24.1"
+python-jose = "^3.4.0"
+passlib = "^1.7.4"
+slowapi = "^0.1.9"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
@@ -17,6 +24,9 @@ mypy = "^1.5.1"
 pytest = "^7.4.0"
 pytest-cov = "^4.1.0"
 pytest-asyncio = "^0.21.1"
+types-python-jose = "^3.4.0.20250224"
+types-passlib = "^1.7.7.20250322"
+types-psutil = "^7.0.0.20250218"
 
 [build-system]
 requires = ["poetry-core"]
@@ -35,3 +45,5 @@ skip_gitignore = true
 [tool.mypy]
 plugins = "pydantic.mypy"
 exclude = ".venv"
+namespace_packages = true
+explicit_package_bases = true

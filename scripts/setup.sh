@@ -19,17 +19,42 @@ else
     echo -e "${GREEN}Poetry is installed.${NC}"
 fi
 
-# Install dependencies using Poetry
+# Portable replacement for realpath
+get_abs_path() {
+    # $1 : relative filename
+    if [[ -d "$1" ]]; then
+        # dir
+        (cd "$1"; pwd)
+    elif [[ -f "$1" ]]; then
+        # file
+        if [[ $1 == */* ]]; then
+            echo "$(cd "${1%/*}"; pwd)/${1##*/}"
+        else
+            echo "$(pwd)/$1"
+        fi
+    else
+        echo "$1" does not exist! >&2
+        return 127
+    fi
+}
+
+# Get the project root directory
+SCRIPT_PATH=$(get_abs_path "$0")
+SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
+PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
+
+# Configure Poetry to create virtual environment in project directory
+echo -e "${BLUE}Configuring Poetry to use in-project virtual environment...${NC}"
+poetry config virtualenvs.in-project true
+
+# Install dependencies using the new script
 echo -e "${BLUE}Installing project dependencies...${NC}"
-poetry install
-echo -e "${GREEN}Dependencies installed successfully.${NC}"
+bash "$(dirname "$(get_abs_path "$0")")/install_dependencies.sh"
 
 # Display virtual environment activation instructions
-echo -e "${YELLOW}To activate the virtual environment:${NC}"
-echo -e "For macOS/Linux: ${GREEN}source .venv/bin/activate${NC}"
-echo -e "For Windows (PowerShell): ${GREEN}.venv\\Scripts\\Activate.ps1${NC}"
-echo -e "For Windows (CMD): ${GREEN}.venv\\Scripts\\activate.bat${NC}"
-echo -e "Or use Poetry's shell: ${GREEN}poetry shell${NC}"
+echo -e "${YELLOW}To activate a service's virtual environment:${NC}"
+echo -e "Navigate to the service directory and run: ${GREEN}poetry shell${NC}"
+echo -e "Or: ${GREEN}source .venv/bin/activate${NC}"
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
@@ -49,9 +74,9 @@ else
 fi
 
 # Create .env file from example if it doesn't exist
-if [ ! -f ".env" ]; then
+if [ ! -f "${PROJECT_ROOT}/.env" ]; then
     echo -e "${YELLOW}Creating .env file from template...${NC}"
-    cp .env.example .env
+    cp "${PROJECT_ROOT}/.env.example" "${PROJECT_ROOT}/.env"
     echo -e "${GREEN}.env file created. You may want to edit it with your configuration.${NC}"
 else
     echo -e "${YELLOW}.env file already exists. Skipping creation.${NC}"
@@ -60,6 +85,5 @@ fi
 echo -e "${BLUE}To build and start services:${NC}"
 echo -e "${YELLOW}./start.sh${NC}"
 echo -e "For more options: ${YELLOW}./start.sh --help${NC}"
-
 echo -e "${GREEN}Setup completed successfully!${NC}"
 echo -e "${BLUE}=====================================${NC}"

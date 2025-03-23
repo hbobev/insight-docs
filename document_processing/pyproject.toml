@@ -1,13 +1,21 @@
 [tool.poetry]
-name = "insight-docs-root"
+name = "document-processing"
 version = "0.1.0"
-description = "Root project for InsightDocs - a microservices-based document processing pipeline"
+description = "Document Processing service for InsightDocs - handles document processing, OCR, and image analysis"
 authors = ["hbobev"]
-readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
+fastapi = "^0.111.0"
+uvicorn = "^0.23.2"
+pydantic-settings = "^2.0.3"
+python-dotenv = "^1.0.0"
+httpx = "^0.24.1"
+numpy = "^1.25.2"
+opencv-python-headless = "^4.8.0"
+pytesseract = "^0.3.10"
+pillow = "^10.0.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
