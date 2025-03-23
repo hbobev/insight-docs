@@ -148,3 +148,15 @@ class ConfigurationError(ApplicationError):
         status_code: int | HTTPStatus = HTTPStatus.INTERNAL_SERVER_ERROR,
     ):
         super().__init__(message, code or "CONFIGURATION_ERROR", status_code)
+
+
+class RateLimitExceededError(ApplicationError):
+    """Exception raised when rate limit is exceeded."""
+
+    def __init__(
+        self,
+        message: str = "Rate limit exceeded",
+        code: str | None = None,
+        status_code: int | HTTPStatus = HTTPStatus.TOO_MANY_REQUESTS,
+    ):
+        super().__init__(message, code or "RATE_LIMIT_EXCEEDED_ERROR", status_code)
