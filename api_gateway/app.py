@@ -3,6 +3,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from api.v1.router import api_router
 from core.config import settings
@@ -43,9 +46,14 @@ def create_application() -> FastAPI:
         title=settings.API_GATEWAY_PROJECT_NAME,
         description="API Gateway for Document Processing Pipeline",
         version=settings.API_GATEWAY_VERSION,
-        # docs_url=f"{settings.API_GATEWAY_HOST}:{settings.API_GATEWAY_PORT}/docs",
-        # openapi_url=f"{settings.API_GATEWAY_HOST}:{settings.API_GATEWAY_PORT}/openapi.json",
+        docs_url=f"{settings.API_GATEWAY_API_PREFIX}/docs",
+        openapi_url=f"{settings.API_GATEWAY_API_PREFIX}/openapi.json",
         lifespan=lifespan,
+    )
+
+    application.state.limiter = Limiter(
+        key_func=get_remote_address,
+        default_limits=[f"{settings.RATE_LIMIT_MAX_REQUESTS}/minute"],
     )
 
     application.add_middleware(
@@ -55,6 +63,8 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    application.add_middleware(SlowAPIMiddleware)
 
     application.include_router(api_router, prefix=f"{settings.API_GATEWAY_API_PREFIX}")
 
