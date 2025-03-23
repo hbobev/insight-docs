@@ -2,10 +2,8 @@ import logging
 import platform
 import time
 from datetime import datetime, timedelta
-from typing import Dict
 
 from fastapi import APIRouter, status
-from fastapi.responses import JSONResponse
 
 from core.config import settings
 from shared.utils.request_handler import process_async_request
@@ -24,7 +22,7 @@ error_count = 0
     status_code=status.HTTP_200_OK,
     response_description="System statistics",
 )
-async def get_system_stats() -> JSONResponse:
+async def get_system_stats():
     async def request_handler():
         global request_count
         request_count += 1
@@ -72,7 +70,7 @@ async def get_system_stats() -> JSONResponse:
     )
 
 
-async def _get_services_health() -> Dict:
+async def _get_services_health() -> dict:
     """
     Get health status of all services.
 

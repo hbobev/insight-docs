@@ -2,7 +2,6 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Body, Query, status
-from fastapi.responses import JSONResponse
 
 from services import entity_extraction_service
 from shared.utils.request_handler import process_async_request
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 async def process_document(
     document_id: str = Body(..., embed=True),
     options: dict[str, Any] | None = Body(None, embed=True),
-) -> JSONResponse:
+):
     async def request_handler():
         return await entity_extraction_service.process_document(
             document_id=document_id,
@@ -40,7 +39,7 @@ async def process_document(
     status_code=status.HTTP_200_OK,
     response_description="Processing job status",
 )
-async def get_processing_status(job_id: str) -> JSONResponse:
+async def get_processing_status(job_id: str):
     async def request_handler():
         return await entity_extraction_service.get_processing_status(job_id)
 
@@ -62,7 +61,7 @@ async def list_processing_jobs(
     limit: int = Query(10, ge=1, le=100, description="Items per page"),
     status_filter: str | None = Query(None, description="Filter by job status"),
     document_id: str | None = Query(None, description="Filter by document ID"),
-) -> JSONResponse:
+):
     async def request_handler():
         return await entity_extraction_service.list_processing_jobs(
             page=page,

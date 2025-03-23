@@ -1,7 +1,6 @@
 import logging
 
 from fastapi import APIRouter, File, Form, Query, UploadFile, status
-from fastapi.responses import JSONResponse
 
 from services import document_upload_service
 from shared.utils.request_handler import process_async_request
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 async def upload_document(
     file: UploadFile = File(...),
     metadata: str | None = Form(None),
-) -> JSONResponse:
+):
     async def request_handler():
         file_content = await file.read()
         return await document_upload_service.upload_document(
@@ -42,7 +41,7 @@ async def upload_document(
     status_code=status.HTTP_200_OK,
     response_description="Document details",
 )
-async def get_document(document_id: str) -> JSONResponse:
+async def get_document(document_id: str):
     async def request_handler():
         return await document_upload_service.get_document(document_id)
 
@@ -64,7 +63,7 @@ async def list_documents(
     limit: int = Query(10, ge=1, le=100, description="Items per page"),
     status_filter: str | None = Query(None, description="Filter by document status"),
     document_type: str | None = Query(None, description="Filter by document type"),
-) -> JSONResponse:
+):
     async def request_handler():
         return await document_upload_service.list_documents(
             page=page,
