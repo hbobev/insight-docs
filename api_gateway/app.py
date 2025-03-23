@@ -7,7 +7,7 @@ from slowapi import Limiter
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
-from api.v1.router import api_router
+from api.v1.api_routes import api_router
 from core.config import settings
 
 logging.basicConfig(
