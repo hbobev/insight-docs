@@ -40,6 +40,11 @@ class ApiGatewaySettings(BaseAppSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int
     ENABLE_AUTH: bool
 
+    # Rate limiting
+    ENABLE_RATE_LIMIT: bool
+    RATE_LIMIT_MAX_REQUESTS: int
+    RATE_LIMIT_WINDOW_SECONDS: int
+
     # Monitoring
     ENABLE_METRICS: bool
     METRICS_PORT: int
