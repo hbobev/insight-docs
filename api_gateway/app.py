@@ -9,11 +9,18 @@ from slowapi.util import get_remote_address
 
 from api.v1.api_routes import api_router
 from core.config import settings
+from core.exceptions import register_exception_handlers
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=settings.LOG_LEVEL.upper(),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
+
+logging.getLogger().handlers[0].formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - [%(request_id)s] - %(message)s",
+    defaults={"request_id": "no-request-id"},
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,10 +58,23 @@ def create_application() -> FastAPI:
         lifespan=lifespan,
     )
 
-    application.state.limiter = Limiter(
-        key_func=get_remote_address,
-        default_limits=[f"{settings.RATE_LIMIT_MAX_REQUESTS}/minute"],
-    )
+    register_exception_handlers(application)
+
+    if settings.ENABLE_RATE_LIMIT:
+        application.state.limiter = Limiter(
+            key_func=get_remote_address,
+            default_limits=[
+                f"{settings.RATE_LIMIT_MAX_REQUESTS}/{settings.RATE_LIMIT_WINDOW_SECONDS} second"
+            ],
+        )
+        application.add_middleware(SlowAPIMiddleware)
+        logger.info(
+            f"Rate limiting enabled: {settings.RATE_LIMIT_MAX_REQUESTS} "
+            f"requests per {settings.RATE_LIMIT_WINDOW_SECONDS} seconds"
+        )
+
+    if settings.APP_ENV == "development":
+        logger.info(f"CORS enabled for origins: {settings.API_GATEWAY_CORS_ORIGINS}")
 
     application.add_middleware(
         CORSMiddleware,
@@ -64,9 +84,7 @@ def create_application() -> FastAPI:
         allow_headers=["*"],
     )
 
-    application.add_middleware(SlowAPIMiddleware)
-
-    application.include_router(api_router, prefix=f"{settings.API_GATEWAY_API_PREFIX}")
+    application.include_router(api_router, prefix=settings.API_GATEWAY_API_PREFIX)
 
     return application
 
