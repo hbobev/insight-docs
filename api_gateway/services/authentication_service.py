@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -10,9 +10,10 @@ from schemas.authentication_schema import TokenPayload, UserInDB, UserResponse
 from shared.exceptions.base import AuthenticationError
 
 logger = logging.getLogger(__name__)
-
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# In-memory token blacklist (in production, use Redis or similar)
+revoked_tokens: set[str] = set()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -43,7 +44,7 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(
-    data: Dict[str, Any], expires_delta: timedelta | None = None
+    data: dict[str, Any], expires_delta: timedelta | None = None
 ) -> str:
     """
     Create a JWT access token.
@@ -64,13 +65,23 @@ def create_access_token(
             minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
         )
 
+    token_id = (
+        f"access-{data.get('sub', 'unknown')}-{datetime.now(timezone.utc).timestamp()}"
+    )
     to_encode.update(
-        {"exp": expire, "iat": datetime.now(timezone.utc), "type": "access"}
+        {
+            "exp": expire,
+            "iat": datetime.now(timezone.utc),
+            "type": "access",
+            "jti": token_id,
+        }
     )
 
-    return jwt.encode(
+    token = jwt.encode(
         to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
     )
+    logger.info(f"Access token created for user {data.get('sub', 'unknown')}")
+    return token
 
 
 def decode_token(token: str) -> TokenPayload:
@@ -84,9 +95,12 @@ def decode_token(token: str) -> TokenPayload:
         Decoded token payload
 
     Raises:
-        AuthenticationError: If the token is invalid
+        AuthenticationError: If the token is invalid or revoked
     """
     try:
+        if is_token_revoked(token):
+            raise AuthenticationError("Token has been revoked")
+
         payload = jwt.decode(
             token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
         )
@@ -96,7 +110,7 @@ def decode_token(token: str) -> TokenPayload:
         raise AuthenticationError("Invalid token")
 
 
-async def authenticate_user(username: str, password: str) -> Dict[str, Any]:
+async def authenticate_user(username: str, password: str) -> dict[str, Any]:
     """
     Authenticate a user.
 
@@ -110,15 +124,12 @@ async def authenticate_user(username: str, password: str) -> Dict[str, Any]:
     Raises:
         AuthenticationError: If authentication fails
     """
-    # In a real application, this would query a database
-    # For demo purposes, we'll use a hardcoded user
-    if username != "admin":
+    if username != settings.ADMIN_USERNAME:
         logger.warning(f"Authentication failed: User {username} not found")
         raise AuthenticationError("Invalid username or password")
 
-    # Hardcoded user for demo
-    hashed_password = get_password_hash("adminpassword")
-
+    # Use configured admin password
+    hashed_password = get_password_hash(settings.ADMIN_PASSWORD)
     if not verify_password(password, hashed_password):
         logger.warning(f"Authentication failed: Invalid password for user {username}")
         raise AuthenticationError("Invalid username or password")
@@ -126,7 +137,7 @@ async def authenticate_user(username: str, password: str) -> Dict[str, Any]:
     user_data = UserInDB(
         id="admin-user-id",
         username=username,
-        email="admin@example.com",
+        email=settings.ADMIN_EMAIL,
         role="admin",
         is_active=True,
         hashed_password=hashed_password,
@@ -144,6 +155,7 @@ async def authenticate_user(username: str, password: str) -> Dict[str, Any]:
         updated_at=user_data.updated_at,
     )
 
+    logger.info(f"User {username} successfully authenticated")
     return user_response.model_dump()
 
 
@@ -158,15 +170,58 @@ def create_refresh_token(user_id: str) -> str:
         Refresh token
     """
     expires = datetime.now(timezone.utc) + timedelta(days=7)
+    token_id = f"refresh-{user_id}-{datetime.now(timezone.utc).timestamp()}"
 
     to_encode = {
         "sub": user_id,
         "exp": expires,
         "iat": datetime.now(timezone.utc),
         "type": "refresh",
-        "jti": f"refresh-{user_id}-{datetime.now(timezone.utc).timestamp()}",
+        "jti": token_id,
     }
 
-    return jwt.encode(
+    token = jwt.encode(
         to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
     )
+    logger.info(f"Refresh token created for user {user_id}")
+    return token
+
+
+def revoke_token(token: str) -> None:
+    """
+    Revoke a token by adding it to the blacklist.
+
+    Args:
+        token: Token to revoke
+    """
+    try:
+        payload = jwt.decode(
+            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+        )
+        token_id = payload.get("jti")
+        if token_id:
+            revoked_tokens.add(token_id)
+            logger.info(f"Token {token_id[:8]}... has been revoked")
+    except JWTError:
+        logger.error("Failed to decode token for revocation")
+        raise AuthenticationError("Invalid token")
+
+
+def is_token_revoked(token: str) -> bool:
+    """
+    Check if a token has been revoked.
+
+    Args:
+        token: Token to check
+
+    Returns:
+        True if token is revoked, False otherwise
+    """
+    try:
+        payload = jwt.decode(
+            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+        )
+        token_id = payload.get("jti")
+        return token_id in revoked_tokens if token_id else False
+    except JWTError:
+        return True
