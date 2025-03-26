@@ -2,4 +2,5 @@
 max-line-length = 120
 exclude = .venv
 # Ignoring E203 to resolve conflicts with Black's formatting style for slicing
-ignore = E203
+# Ignoring W503 to resolve conflicts for line breaks after binary operators
+ignore = E203, W503
