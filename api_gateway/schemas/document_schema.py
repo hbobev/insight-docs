@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import BaseModel, HttpUrl
 
@@ -89,4 +89,4 @@ class DocumentList(BaseModel):
     """Schema for list of documents response."""
 
     items: list[DocumentResponse]
-    pagination: Dict[str, Any]
+    pagination: dict[str, Any]
