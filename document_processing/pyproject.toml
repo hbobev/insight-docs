@@ -16,6 +16,9 @@ numpy = "^1.25.2"
 opencv-python-headless = "^4.8.0"
 pytesseract = "^0.3.10"
 pillow = "^10.0.0"
+nltk = "^3.8.1"
+pandas = "^2.0.0"
+pymongo = "^4.11.3"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
@@ -43,3 +46,9 @@ skip_gitignore = true
 [tool.mypy]
 plugins = "pydantic.mypy"
 exclude = ".venv"
+namespace_packages = true
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = "pytesseract"
+ignore_missing_imports = true
