@@ -57,7 +57,7 @@ def create_application() -> FastAPI:
     )
 
     application.include_router(
-        api_router, 
+        api_router,
         prefix=settings.API_V1_PREFIX,
     )
 
@@ -65,6 +65,16 @@ def create_application() -> FastAPI:
 
 
 app = create_application()
+
+
+@app.get("/")
+async def root():
+    return {"message": "Document Ingestion Service"}
+
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Document Ingestion Service starting up")
 
 
 if __name__ == "__main__":
